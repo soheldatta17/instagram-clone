@@ -10,6 +10,7 @@ interface Story {
   avatar: string;
   media: string[];
   isYou?: boolean;
+  timestamp: string;
 }
 
 interface StoryModalProps {
@@ -22,11 +23,16 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
   const [currentStoryIndex, setCurrentStoryIndex] = useState(initialStoryIndex);
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const router = useRouter();
 
   const currentStory = stories[currentStoryIndex];
+  const STORY_DURATION = 20000; // 20 seconds per story
+  const PROGRESS_INCREMENT = 100 / (STORY_DURATION / 100); // Progress increment per 100ms
 
   useEffect(() => {
+    if (isPaused) return;
+
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -43,12 +49,12 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
             return prev;
           }
         }
-        return prev + 2;
+        return prev + PROGRESS_INCREMENT;
       });
     }, 100);
 
     return () => clearInterval(timer);
-  }, [currentStoryIndex, currentMediaIndex, currentStory.media.length, stories.length, onClose]);
+  }, [currentStoryIndex, currentMediaIndex, isPaused, currentStory.media.length, stories.length, onClose]);
 
   const handlePrevious = () => {
     if (currentMediaIndex > 0) {
@@ -56,7 +62,7 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
       setProgress(0);
     } else if (currentStoryIndex > 0) {
       setCurrentStoryIndex(prev => prev - 1);
-      setCurrentMediaIndex(0);
+      setCurrentMediaIndex(stories[currentStoryIndex - 1].media.length - 1);
       setProgress(0);
     }
   };
@@ -74,7 +80,8 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
     }
   };
 
-  const navigateToProfile = () => {
+  const navigateToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
     onClose();
     router.push(`/profile/${currentStory.username}`);
   };
@@ -85,6 +92,11 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      onMouseDown={() => setIsPaused(true)}
+      onMouseUp={() => setIsPaused(false)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
     >
       <button
         onClick={onClose}
@@ -117,12 +129,15 @@ export default function StoryModal({ stories, initialStoryIndex, onClose }: Stor
                 className="w-8 h-8 rounded-full"
               />
             </button>
-            <button 
-              onClick={navigateToProfile}
-              className="text-sm font-semibold text-white"
-            >
-              {currentStory.username}
-            </button>
+            <div className="flex flex-col">
+              <button 
+                onClick={navigateToProfile}
+                className="text-sm font-semibold text-left text-white"
+              >
+                {currentStory.username}
+              </button>
+              <span className="text-xs text-white/70">{currentStory.timestamp} ago</span>
+            </div>
           </div>
         </div>
 
